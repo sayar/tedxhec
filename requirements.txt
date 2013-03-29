@@ -1,0 +1,11 @@
+nose
+
+gevent
+gevent-socketio
+pymongo
+flask
+requests
+
+cython
+pyzmq
+gevent_zeromq
