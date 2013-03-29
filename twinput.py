@@ -3,6 +3,7 @@
 
 import sys
 import argparse
+import datetime
 import settings
 from gevent import monkey
 from gevent.wsgi import WSGIServer
@@ -38,6 +39,7 @@ def sms():
         'FromCountry': request.form.get('FromCountry', None),
         'To': request.form.get('To', None),
         'Body': request.form.get('Body', None),
+        'Created': datetime.datetime.now()
     })
 
     # Return an empty response to Twilio.
