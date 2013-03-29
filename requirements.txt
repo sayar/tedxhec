@@ -5,6 +5,7 @@ gevent-socketio
 pymongo
 flask
 requests
+twilio
 
 cython
 pyzmq
