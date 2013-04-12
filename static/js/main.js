@@ -2,7 +2,7 @@
 
 window.onload = function ()
 {
-    var SERVER_PATH = 'ws://localhost:8080';
+    var SERVER_PATH = 'http://localhost:8080/sms';
 
     var SPACE = 20;
     var FONT_SIZE = 64;
@@ -81,27 +81,18 @@ window.onload = function ()
         return pos.reverse();
     }
 
-    if ('WebSocket' in window)
+    var story = [""];
+    update(story);
+
+    var socket = io.connect(SERVER_PATH);
+
+    socket.on('sms', function (msg)
     {
-        var story = [""];
+        var words = msg.text.split(" ").map(Word);
+
+        var end = story.splice(msg.pos);
+        story = story.concat(words, end);
+
         update(story);
-
-        var socket = new WebSocket(SERVER_PATH);
-
-        socket.onopen = function (e) { console.log("Connected to server"); };
-        socket.onclose = function (e) { console.log("Disconnected from server"); };
-
-        socket.onmessage = function (e)
-        {
-            var msg = JSON.parse(e.data);
-            var words = msg.text.split(" ").map(Word);
-
-            var end = story.splice(msg.pos);
-            story = story.concat(words, end);
-
-            update(story);
-        };
-    }
-
-    else alert("WebSockets not supported");
+    });
 };
