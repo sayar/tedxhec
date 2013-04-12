@@ -2,11 +2,9 @@
 
 window.onload = function ()
 {
-    var SENTENCE = "The fox jumped over the dog.";
+    var SERVER_PATH = 'ws://localhost:8080';
 
     var SPACE = 20;
-    var TIMEOUT = 1000;
-
     var FONT_SIZE = 64;
 
     var svg = d3.select('body')
@@ -65,28 +63,26 @@ window.onload = function ()
         return pos.reverse();
     }
 
-    var words = SENTENCE.split(" ");
-
-    update(words);
-
-    var edits = [
-        { word: "quick", i: 1 },
-        { word: "lazy", i: 6 },
-        { word: "brown", i: 2 }
-    ];
-
-    function edit()
+    if ('WebSocket' in window)
     {
-        if (edits.length === 0)
-            return;
+        var story = [];
+        update(story);
 
-        var e = edits.shift();
+        var socket = new WebSocket(SERVER_PATH);
 
-        words.splice(e.i, 0, e.word);
-        update(words);
+        socket.onopen = function (e) { console.log("Connected to server"); };
+        socket.onclose = function (e) { console.log("Disconnected from server"); };
 
-        setTimeout(edit, TIMEOUT);
+        socket.onmessage = function (e)
+        {
+            var msg = JSON.parse(e.data);
+
+            var end = story.splice(msg.pos);
+            story = story.concat(msg.text.split(" "), end);
+
+            update(story);
+        };
     }
 
-    setTimeout(edit, TIMEOUT);
+    else alert("WebSockets not supported");
 };
