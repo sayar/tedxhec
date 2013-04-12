@@ -18,10 +18,28 @@ window.onload = function ()
         width = d3.scale.linear().range([0, window.innerWidth]),
         height = d3.scale.linear().range([0, window.innerHeight]);
 
+    var wordID = 0;
+
+    function Word(text)
+    {
+        if (this)
+        {
+            this.id = wordID++;
+            this.text = text;
+        }
+
+        else return new Word(text);
+    }
+
+    Word.prototype.toString = function ()
+    {
+        return this.text;
+    };
+
     function update(data)
     {
         var words = svg.selectAll('tspan')
-                       .data(data, String);
+                       .data(data, function (d) { return d.id; });
 
         words.enter().append('tspan')
                      .text(String)
@@ -65,7 +83,7 @@ window.onload = function ()
 
     if ('WebSocket' in window)
     {
-        var story = [];
+        var story = [""];
         update(story);
 
         var socket = new WebSocket(SERVER_PATH);
@@ -76,9 +94,10 @@ window.onload = function ()
         socket.onmessage = function (e)
         {
             var msg = JSON.parse(e.data);
+            var words = msg.text.split(" ").map(Word);
 
             var end = story.splice(msg.pos);
-            story = story.concat(msg.text.split(" "), end);
+            story = story.concat(words, end);
 
             update(story);
         };

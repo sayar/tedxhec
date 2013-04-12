@@ -3,17 +3,14 @@
 import argparse
 import gevent
 import json
+import settings
 import sys
 
 from gevent.pywsgi import WSGIServer
 from geventwebsocket.handler import WebSocketHandler
+from pymongo import MongoClient
 
-MESSAGES = [
-    { 'text': "The fox jumped over the dog.", 'pos': 0 },
-    { 'text': "quick", 'pos': 1 },
-    { 'text': "lazy", 'pos': 6 },
-    { 'text': "brown", 'pos': 2 }
-]
+mongo_client = MongoClient(settings.MONGODB_HOST, int(settings.MONGODB_PORT))
 
 def serve(env, respond):
     ws = env.get('wsgi.websocket')
@@ -22,10 +19,14 @@ def serve(env, respond):
         respond("400 Bad Request", [])
         return ["Unexpected HTTP connection to WebSocket server"]
 
-    for msg in MESSAGES:
+    db = mongo_client['tedxhec']
+    input = db['input']
+
+    for sms in input.find().sort('Created'):
         if ws.socket is None:
             break
 
+        msg = { 'text': sms['Body'], 'pos': -1 }
         ws.send(json.dumps(msg))
         gevent.sleep(1)
 
