@@ -5,13 +5,17 @@ import gevent
 import settings
 import sys
 
-from gevent import monkey; monkey.patch_all()
+from gevent import monkey
+monkey.patch_all()
 from gevent_zeromq import zmq
 from pymongo import MongoClient
 
 from socketio import socketio_manage
 from socketio.namespace import BaseNamespace
 from socketio.server import SocketIOServer
+
+mongo_client = MongoClient(settings.MONGODB_HOST, int(settings.MONGODB_PORT))
+
 
 class SMSNamespace(BaseNamespace):
     def initialize(self):
@@ -31,8 +35,6 @@ class SMSNamespace(BaseNamespace):
 
     def recv_connect(self):
         def send_smses():
-            mongo_client = MongoClient(settings.MONGODB_HOST, int(settings.MONGODB_PORT))
-
             db = mongo_client['tedxhec']
             smses = db['input']
 
@@ -43,7 +45,8 @@ class SMSNamespace(BaseNamespace):
 
         self.spawn(send_smses)
 
-class Server():
+
+class Server(object):
     def __call__(self, environ, start_response):
         path = environ['PATH_INFO'].strip('/') or 'index.html'
 
@@ -60,7 +63,8 @@ class Server():
             elif path.endswith('.js'):
                 content_type = 'text/javascript'
 
-            else: content_type = 'text/html'
+            else:
+                content_type = 'text/html'
 
             start_response('200 OK', [('Content-Type', content_type)])
             return [body]
@@ -68,11 +72,14 @@ class Server():
         elif path.startswith('socket.io'):
             socketio_manage(environ, {'/sms': SMSNamespace})
 
-        else: return not_found(start_response)
+        else:
+            return not_found(start_response)
+
 
 def not_found(start_response):
     start_response('404 Not Found', [])
     return ['<h1>Not Found</h1>']
+
 
 def main():
     parser = argparse.ArgumentParser(description='SMS Output Service')
