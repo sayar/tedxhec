@@ -29,8 +29,11 @@ class SMSNamespace(BaseNamespace):
 
             while True:
                 for sms in sub.listen():
-                    msg = {'text': sms['data'], 'pos': -1}
-                    self.emit('sms', msg)
+                    data = sms['data']
+
+                    if isinstance(data, basestring):
+                        msg = {'text': data, 'pos': -1}
+                        self.emit('sms', msg)
 
         self.spawn(receive_sms)
 
