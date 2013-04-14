@@ -10,10 +10,13 @@ monkey.patch_all()
 from gevent_zeromq import zmq
 from pymongo import MongoClient
 
+from flask import Flask, request, Response, render_template
+
 from socketio import socketio_manage
 from socketio.namespace import BaseNamespace
 from socketio.server import SocketIOServer
 
+flask_app = Flask(__name__)
 mongo_client = MongoClient(settings.MONGODB_HOST, int(settings.MONGODB_PORT))
 
 
@@ -46,39 +49,20 @@ class SMSNamespace(BaseNamespace):
         self.spawn(send_smses)
 
 
-class Server(object):
-    def __call__(self, environ, start_response):
-        path = environ['PATH_INFO'].strip('/') or 'index.html'
-
-        if path.startswith('static') or path == 'index.html':
-            try:
-                body = open(path).read()
-
-            except Exception:
-                return not_found(start_response)
-
-            if path.endswith('.css'):
-                content_type = 'text/css'
-
-            elif path.endswith('.js'):
-                content_type = 'text/javascript'
-
-            else:
-                content_type = 'text/html'
-
-            start_response('200 OK', [('Content-Type', content_type)])
-            return [body]
-
-        elif path.startswith('socket.io'):
-            socketio_manage(environ, {'/sms': SMSNamespace})
-
-        else:
-            return not_found(start_response)
+@flask_app.route('/')
+def index():
+    return render_template('index.html')
 
 
-def not_found(start_response):
-    start_response('404 Not Found', [])
-    return ['<h1>Not Found</h1>']
+@flask_app.route('/socket.io/<path:remaining>')
+def socketio(remaining):
+    try:
+        socketio_manage(request.environ, {'/sms': SMSNamespace}, request)
+    except Exception, e:
+        print remaining
+        print e
+
+    return Response()
 
 
 def main():
@@ -88,7 +72,7 @@ def main():
 
     args = parser.parse_args()
 
-    SocketIOServer((args.host, args.port), Server()).serve_forever()
+    SocketIOServer((args.host, args.port), flask_app, resource="socket.io").serve_forever()
 
 if __name__ == '__main__':
     sys.exit(main())

@@ -1,7 +1,6 @@
 'use strict';
 
-window.onload = function ()
-{
+$(function(){
     var SERVER_PATH = 'http://localhost:8080/sms';
 
     var SPACE = 20;
@@ -95,4 +94,4 @@ window.onload = function ()
 
         update(story);
     });
-};
+});
