@@ -1,8 +1,7 @@
 'use strict';
 
-$(function(){
-    var SERVER_PATH = 'http://localhost:8080/sms';
-
+$(function()
+{
     var SPACE = 20;
     var FONT_SIZE = 64;
 
@@ -83,7 +82,7 @@ $(function(){
     var story = [""];
     update(story);
 
-    var socket = io.connect(SERVER_PATH);
+    var socket = io.connect('/sms');
 
     socket.on('sms', function (msg)
     {
