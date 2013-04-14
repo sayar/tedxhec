@@ -42,6 +42,22 @@ def sms():
         'Created': datetime.datetime.now()
     })
 
+    # Check to see if the body is not none or empty
+    body = request.form.get('Body', None),
+    if body and isinstance(body, basestring) and body.strip() != '':
+        if 'queue' not in db.collection_names():
+            db.create_collection(
+                'queue',
+                capped=True,
+                size=2 ** 20,
+                max=100,
+                autoIndexId=False)
+
+        queue = db['queue']
+        queue.insert({
+            'Body': body
+        })
+
     # Return an empty response to Twilio.
     return str(twiml.Response())
 
