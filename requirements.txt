@@ -7,6 +7,4 @@ flask
 requests
 twilio
 
-cython
-pyzmq
-gevent_zeromq
+redis

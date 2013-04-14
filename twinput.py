@@ -10,12 +10,14 @@ from gevent.wsgi import WSGIServer
 # Monkey patch first for MongoClient
 monkey.patch_all()
 
+import redis
 from flask import Flask, request
 from twilio import twiml
 from pymongo import MongoClient
 
 flask_app = Flask(__name__)
 mongo_client = MongoClient(settings.MONGODB_HOST, int(settings.MONGODB_PORT))
+redis_client = redis.client.StrictRedis(settings.REDIS_HOST, int(settings.REDIS_PORT))
 
 
 @flask_app.route('/input', methods=['POST'])
@@ -45,18 +47,7 @@ def sms():
     # Check to see if the body is not none or empty
     body = request.form.get('Body', None),
     if body and isinstance(body, basestring) and body.strip() != '':
-        if 'queue' not in db.collection_names():
-            db.create_collection(
-                'queue',
-                capped=True,
-                size=2 ** 20,
-                max=100,
-                autoIndexId=False)
-
-        queue = db['queue']
-        queue.insert({
-            'Body': body
-        })
+        redis_client.publish('queue', body)
 
     # Return an empty response to Twilio.
     return str(twiml.Response())
