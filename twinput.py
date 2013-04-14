@@ -29,9 +29,12 @@ def sms():
         import pprint
         pprint.pprint(request.form)
 
+    body = request.form.get('Body', None)
+
     # Persist to Mongodb
     db = mongo_client['tedxhec']
     collection = db['input']
+
     collection.insert({
         '_id': request.form.get('SmsSid', None),
         'From': request.form.get('From', None),
@@ -40,12 +43,11 @@ def sms():
         'FromState': request.form.get('FromState', None),
         'FromCountry': request.form.get('FromCountry', None),
         'To': request.form.get('To', None),
-        'Body': request.form.get('Body', None),
+        'Body': body,
         'Created': datetime.datetime.now()
     })
 
     # Check to see if the body is not none or empty
-    body = request.form.get('Body', None),
     if body and isinstance(body, basestring) and body.strip() != '':
         redis_client.publish('queue', body)
 

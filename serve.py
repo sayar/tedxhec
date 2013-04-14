@@ -2,12 +2,12 @@
 
 import argparse
 import gevent
+import redis
 import settings
 import sys
 
 from gevent import monkey
 monkey.patch_all()
-from gevent_zeromq import zmq
 from pymongo import MongoClient
 
 from flask import Flask, request, Response, render_template
@@ -18,21 +18,19 @@ from socketio.server import SocketIOServer
 
 flask_app = Flask(__name__)
 mongo_client = MongoClient(settings.MONGODB_HOST, int(settings.MONGODB_PORT))
+redis_client = redis.client.StrictRedis(settings.REDIS_HOST, int(settings.REDIS_PORT))
 
 
 class SMSNamespace(BaseNamespace):
     def initialize(self):
         def receive_sms():
-            context = zmq.Context()
-
-            socket = context.socket(zmq.SUB)
-            socket.connect(settings.ZMQ_ADDRESS)
-            socket.setsockopt(zmq.SUBSCRIBE, '')
+            sub = redis_client.pubsub()
+            sub.subscribe('queue')
 
             while True:
-                sms = socket.recv()
-                msg = {'text': sms, 'pos': -1}
-                self.emit('sms', msg)
+                for sms in sub.listen():
+                    msg = {'text': sms['data'], 'pos': -1}
+                    self.emit('sms', msg)
 
         self.spawn(receive_sms)
 
