@@ -14,6 +14,7 @@ from flask import Flask, request, Response, render_template
 
 from socketio import socketio_manage
 from socketio.namespace import BaseNamespace
+from socketio.mixins import BroadcastMixin
 from socketio.server import SocketIOServer
 
 flask_app = Flask(__name__)
@@ -21,7 +22,7 @@ mongo_client = MongoClient(settings.MONGODB_HOST, int(settings.MONGODB_PORT))
 redis_client = redis.client.StrictRedis(settings.REDIS_HOST, int(settings.REDIS_PORT))
 
 
-class SMSNamespace(BaseNamespace):
+class SMSNamespace(BaseNamespace, BroadcastMixin):
     def initialize(self):
         def receive_sms():
             sub = redis_client.pubsub()
@@ -35,19 +36,17 @@ class SMSNamespace(BaseNamespace):
                         msg = {'text': data, 'pos': -1}
                         self.emit('sms', msg)
 
+                gevent.sleep(0)
+
         self.spawn(receive_sms)
 
     def recv_connect(self):
-        def send_smses():
-            db = mongo_client['tedxhec']
-            smses = db['input']
+        db = mongo_client['tedxhec']
+        smses = db['input']
 
-            for sms in smses.find().sort('Created'):
-                msg = {'text': sms['Body'], 'pos': -1}
-                self.emit('sms', msg)
-                gevent.sleep(1)
-
-        self.spawn(send_smses)
+        for sms in smses.find().sort('Created'):
+            msg = {'text': sms['Body'], 'pos': -1}
+            self.emit('sms', msg)
 
 
 @flask_app.route('/')
@@ -60,7 +59,6 @@ def socketio(remaining):
     try:
         socketio_manage(request.environ, {'/sms': SMSNamespace}, request)
     except Exception, e:
-        print remaining
         print e
 
     return Response()
