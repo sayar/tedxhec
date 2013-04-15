@@ -53,6 +53,13 @@ class SMSNamespace(BaseNamespace, BroadcastMixin):
 def index():
     return render_template('index.html')
 
+@flask_app.route('/clear')
+def clear():
+    db = mongo_client['tedxhec']
+    smses = db['input']
+    smses.remove(None)
+    return Response()
+
 
 @flask_app.route('/socket.io/<path:remaining>')
 def socketio(remaining):
