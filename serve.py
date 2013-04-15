@@ -22,7 +22,7 @@ mongo_client = MongoClient(settings.MONGODB_HOST, int(settings.MONGODB_PORT))
 redis_client = redis.client.StrictRedis(settings.REDIS_HOST, int(settings.REDIS_PORT))
 
 
-class SMSNamespace(BaseNamespace, BroadcastMixin):
+class SMSNamespace(BaseNamespace):
     def initialize(self):
         def receive_sms():
             sub = redis_client.pubsub()
@@ -78,8 +78,7 @@ def main():
 
     args = parser.parse_args()
 
-    SocketIOServer((args.host, args.port), flask_app, transports=["websocket", "xhr-polling"], policy_server=False,
-                   resource="socket.io").serve_forever()
+    SocketIOServer((args.host, args.port), flask_app, resource="socket.io").serve_forever()
 
 if __name__ == '__main__':
     sys.exit(main())
