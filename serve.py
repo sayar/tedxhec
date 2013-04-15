@@ -78,7 +78,8 @@ def main():
 
     args = parser.parse_args()
 
-    SocketIOServer((args.host, args.port), flask_app, resource="socket.io").serve_forever()
+    SocketIOServer((args.host, args.port), flask_app, transports=["websocket", "xhr-polling"], policy_server=False,
+                   resource="socket.io").serve_forever()
 
 if __name__ == '__main__':
     sys.exit(main())
