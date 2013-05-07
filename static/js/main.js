@@ -43,7 +43,7 @@ $(function()
                      .text(String)
                      .attr('x', width(Math.random()))
                      .attr('y', height(Math.random()))
-                     .style('fill', color(Math.random()))
+                     .style('fill', color('#FF0000'))
                      .style('fill-opacity', 0);
 
         var pos = getWordPositions(words);
