@@ -30,10 +30,11 @@ def sms():
         pprint.pprint(request.form)
 
     body = request.form.get('Body', None)
+    sid = request.form.get('SmsSid', None)
 
     # Persist to Mongodb
     db = mongo_client['tedxhec']
-    collection = db['input']
+    collection = db['input_raw']
 
     collection.insert({
         '_id': request.form.get('SmsSid', None),
@@ -49,7 +50,7 @@ def sms():
 
     # Check to see if the body is not none or empty
     if body and isinstance(body, basestring) and body.strip() != '':
-        redis_client.publish('queue', body)
+        redis_client.publish('admin_queue', body + "\t" + sid)
 
     # Return an empty response to Twilio.
     return str(twiml.Response())
