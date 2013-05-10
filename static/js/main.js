@@ -3,18 +3,20 @@
 $(function()
 {
     var SPACE = 20;
-    var FONT_SIZE = 64;
+    var FONT_SIZE = 50;     //changed from 64 
 
     var svg = d3.select('body')
-                .append('svg')
+                .append('svg').attr('id', "textarea")
                 .append('g')
                     .attr('transform', 'translate(0, ' + FONT_SIZE + ')')
                 .append('text')
                     .attr('font-size', FONT_SIZE);
 
+    
+    console.log($("#textarea").width());
     var color = d3.scale.category10(),
-        width = d3.scale.linear().range([0, window.innerWidth]),
-        height = d3.scale.linear().range([0, window.innerHeight]);
+        width = d3.scale.linear().range([0, $("#textarea").width()]),
+        height = d3.scale.linear().range([0, $("#textarea").height()]);
 
     var wordID = 0;
 
@@ -27,11 +29,13 @@ $(function()
         }
 
         else return new Word(text);
+        
     }
 
     Word.prototype.toString = function ()
     {
         return this.text;
+    
     };
 
     function update(data)
@@ -43,15 +47,17 @@ $(function()
                      .text(String)
                      .attr('x', width(Math.random()))
                      .attr('y', height(Math.random()))
-                     .style('fill', color('#FF0000'))
+                     .style('fill', color(Math.random()))   //#0000A0
                      .style('fill-opacity', 0);
 
         var pos = getWordPositions(words);
-
+        
+        
         words.transition()
              .attr('x', function (d, i) { return pos[i].x; })
              .attr('y', function (d, i) { return pos[i].y; })
              .style('fill-opacity', 1);
+             
     }
 
     function getWordPositions(words)
@@ -62,7 +68,7 @@ $(function()
         {
             var len = this.getComputedTextLength() + SPACE;
 
-            if ((pos[0].x + len) > window.innerWidth)
+            if ((pos[0].x + len) > (window.innerWidth - 200) )
             {
                 pos[0].x = 0;
                 pos[0].y += FONT_SIZE;

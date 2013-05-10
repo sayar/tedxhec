@@ -1,54 +1,38 @@
 body
 {
     margin: 0;
-    background-image: url('http://s3.postimg.org/f4kuxchg3/purty_wood_2_X.png');
+    background-image: url('http://s8.postimg.org/yn0oxlsl1/dark_wood_2_X.png'); /* DARK WOOD */
     background-color: #FFFFFF;
     background-repeat: repeat;
 }
 
-
-/* #pBorder
-{
-    position: absolute;
-    top: 95px;
-    right: 95px;
-    bottom: 45px;
-    left: 95px;
-    background: #CCCCCC;
-}
-    
-#paper
-{
-    position: absolute;
-    top: 100px;
-    right: 100px;
-    bottom: 50px;
-    left: 100px;
-    background-image: url('http://s22.postimg.org/5b6mwed75/linedpaper_2x.png');
-}*/
-    
-
-
 svg
 {
-    position: absolute;         /*used to be fixed */
-    
+    position: absolute;         /*orig fixed */
+    padding: 1cm;
     word-wrap: break-word;      
-    margin: auto;
-    overflow: auto;
     
-    width: 80%;             /* used to be 100% */
-    height: 100%;
+    overflow: scroll; 
+    
+   height: 100%;
+    width:80%;      /*may look weird fi not in presentation mode CHROME made */
+   
+    margin-top:100px;
+    margin-bottom:100px;
+    margin-right:50px;
+    margin-left:80px;
 
-    top: 100px;
-    right: 100px;
-    bottom: 0px;
-    left: 100px;
-    
     background-image: url('http://s22.postimg.org/5b6mwed75/linedpaper_2x.png');
-}
+    
+   -moz-box-shadow: 0 0 8px 8px #888;
+    -webkit-box-shadow: 0 0 8px 8px#888;
+    box-shadow: 0 0 8px 8px #888;
+}    
+ 
 
 text
 {
-    font-family: 'Arial', cursive;
+    font-family: 'Just Me Again Down Here', cursive; /*hard ot read? */
+    text-align: center;
+    line-height:100;
 }
