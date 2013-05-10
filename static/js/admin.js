@@ -11,7 +11,7 @@ $(function(){
 
     socket.on('admin_remove', function(msg){
 
-        if ($("#smses").children().length == 0){
+        if ($("#smses").children().length == 1){
             currentDiv = null;
             $("#"+msg.sid).remove();
         }
@@ -20,6 +20,10 @@ $(function(){
             currentDiv = $("#"+currentDiv).next().attr('id');
             $("#"+msg.sid).remove();
         }
+    });
+
+    socket.on('print_mode', function(msg){
+       $("#mode").html("Current Mode: " + msg.mode);
     });
 
     function insertMessageToPage(text, sid){
@@ -41,8 +45,12 @@ $(function(){
     }
 
     function approveMessage(){
-        selectDiv($("#"+currentDiv).next());
+
         var oldDiv = currentDiv;
+        if (!($("#"+oldDiv).attr('id'))){
+            return
+        }
+        selectDiv($("#"+currentDiv).next());
         currentDiv = $("#"+currentDiv).next().attr('id');
         socket.emit("approve_sms", { id: $("#"+oldDiv).attr('id'), text: $("#"+oldDiv).find("a").html()});
         $("#"+oldDiv).remove();
@@ -69,5 +77,9 @@ $(function(){
                 rejectMessage()
                 break;
         }
+    });
+
+    $("#modechange").click(function (){
+        socket.emit('change_mode',{});
     });
 });
