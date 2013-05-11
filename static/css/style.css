@@ -1,6 +1,6 @@
 body
 {
-    margin: 0;
+    margin: 0px;
     background-image: url('http://s8.postimg.org/yn0oxlsl1/dark_wood_2_X.png'); /* DARK WOOD */
     background-color: #FFFFFF;
     background-repeat: repeat;
@@ -17,7 +17,7 @@ svg
    height: 100%;
     width:80%;      /*may look weird fi not in presentation mode CHROME made */
    
-    margin-top:100px;
+    margin-top:50px;
     margin-bottom:100px;
     margin-right:50px;
     margin-left:80px;
@@ -34,5 +34,13 @@ text
 {
     font-family: 'Just Me Again Down Here', cursive; /*hard ot read? */
     text-align: center;
-    line-height:100;
+}
+
+h3
+{
+    font-family: 'Quicksand', normal;
+    text-align: center;
+    font-size: 60px;
+    color: #FFFFDB;
+    line-height: 10px;
 }
