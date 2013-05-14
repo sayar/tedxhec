@@ -1,15 +1,18 @@
 #! /usr/bin/env python
 # author: Rami Sayar
 
+import re
 import sys
 import argparse
 import datetime
 import settings
+from profanity_filter import Filter
 from gevent import monkey
 from gevent.wsgi import WSGIServer
 # Monkey patch first for MongoClient
 monkey.patch_all()
 
+import hunspell
 import redis
 from flask import Flask, request
 from twilio import twiml
@@ -18,7 +21,9 @@ from pymongo import MongoClient
 flask_app = Flask(__name__)
 mongo_client = MongoClient(settings.MONGODB_HOST, int(settings.MONGODB_PORT))
 redis_client = redis.client.StrictRedis(settings.REDIS_HOST, int(settings.REDIS_PORT))
-
+hunspell_en_CA = hunspell.HunSpell('/usr/share/hunspell/en_CA.dic', '/usr/share/hunspell/en_CA.aff')
+hunspell_en_US = hunspell.HunSpell('/usr/share/hunspell/en_US.dic', '/usr/share/hunspell/en_US.aff')
+prof_filt = Filter()
 
 @flask_app.route('/input', methods=['POST'])
 def sms():
@@ -31,6 +36,21 @@ def sms():
 
     body = request.form.get('Body', None)
     sid = request.form.get('SmsSid', None)
+
+    if len(body) < 30:
+        print "Too Short Message"
+        return str(twiml.Response())
+
+    for word in re.split('\W+', body):
+        if (not hunspell_en_CA.spell(word)) and (not hunspell_en_US.spell(word)):
+            print "Misspelled word"
+            return str(twiml.Response())
+
+    if prof_filt.check(body):
+        print "Profane Message"
+        return str(twiml.Response())
+
+    print "Good Message"
 
     # Persist to Mongodb
     db = mongo_client['tedxhec']

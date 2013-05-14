@@ -8,3 +8,5 @@ requests
 twilio
 
 redis
+
+-e git://github.com/smathot/pyhunspell.git#egg=hunspell
