@@ -10,6 +10,8 @@ import datetime
 from random import choice
 
 from gevent import monkey
+from gevent.queue import Queue, Empty
+
 monkey.patch_all()
 from pymongo import MongoClient
 
@@ -25,22 +27,25 @@ mongo_client = MongoClient(settings.MONGODB_HOST, int(settings.MONGODB_PORT))
 redis_client = redis.client.StrictRedis(settings.REDIS_HOST, int(settings.REDIS_PORT))
 
 story_mode = "Everything"
-init = False
+
+story_queue = Queue()
+approved_queue = Queue()
+
 
 class SMSNamespace(BaseNamespace):
     def initialize(self):
 
         def receive_sms():
-            sub = redis_client.pubsub()
-            sub.subscribe('story')
             while True:
-                for sms in sub.listen():
-                    data = sms['data']
-
-                    if isinstance(data, basestring):
-                        msg = {'text': data, 'pos': -1}
-                        self.emit('sms', msg)
+                sms = story_queue.get()
+                if sms['type'] == 'publish':
+                    msg = {'text': sms['text'], 'pos': -1}
+                    self.emit('sms', msg)
+                else:
+                    msg = {'text': sms['text']}
+                    self.emit('potential', msg)
                 gevent.sleep(0)
+
         self.spawn(receive_sms)
 
 
@@ -52,8 +57,10 @@ class SMSNamespace(BaseNamespace):
             msg = {'text': sms['Body'], 'pos': -1}
             self.emit('sms', msg)
 
+
 class AdminNamespace(BaseNamespace, BroadcastMixin):
     removed_smses = []
+
     def initialize(self):
         def receive_sms_admin():
             sub = redis_client.pubsub()
@@ -66,8 +73,8 @@ class AdminNamespace(BaseNamespace, BroadcastMixin):
                         data = data.split("\t", 1)
                         msg = {'text': data[0], 'sid': data[1], 'pos': -1}
                         self.emit('admin', msg)
-                        #gevent.spawn_later(5, self.send_sms_to_client, data[0], data[1])
                 gevent.sleep(0)
+
         self.spawn(receive_sms_admin)
 
     def recv_connect(self):
@@ -86,7 +93,7 @@ class AdminNamespace(BaseNamespace, BroadcastMixin):
         db['input'].insert(db_entry)
 
         #publish the text for the story controller
-        globals()['smses'].append(message["text"] + '\t' + message["id"])
+        approved_queue.put({'text': message["text"], 'id': message["id"]})
 
         #signal all admin pages to remove this sms from the page
         self.broadcast_event_not_me('admin_remove', {'sid': message["id"]})
@@ -97,7 +104,7 @@ class AdminNamespace(BaseNamespace, BroadcastMixin):
         else:
             globals()['story_mode'] = "Everything"
         self.broadcast_event('print_mode', {'mode': story_mode})
-            
+
     def on_remove_sms(self, message):
         #put the id into the list of ids we manually removed
         self.removed_smses.append(message["id"])
@@ -108,7 +115,6 @@ class AdminNamespace(BaseNamespace, BroadcastMixin):
         db['input_removed'].insert(db_entry)
 
         #signal all the other admin pages to remove this element
-        #self.emit('admin_remove', {'sid': message['id']})
         self.broadcast_event_not_me('admin_remove', {'sid': message["id"]})
 
 
@@ -116,9 +122,11 @@ class AdminNamespace(BaseNamespace, BroadcastMixin):
 def index():
     return render_template('index.html')
 
+
 @flask_app.route('/admin')
 def admin():
     return render_template('admin.html')
+
 
 @flask_app.route('/clear')
 def clear():
@@ -139,45 +147,47 @@ def socketio(remaining):
 
     return Response()
 
-smses = []
 
 def storyControl():
-    sub = redis_client.pubsub()
-    sub.subscribe('queue')
     switchedModes = False
     db = mongo_client['tedxhec']
-
+    smses_round = []
 
     while True:
         if story_mode == "Everything":
             switchedModes = False
-            #pull the smses out of the list and publish them to the page
-            for sms in smses:
-                smsSplit = sms.split("\t", 1)
-                redis_client.publish('story', smsSplit[0])
-                smses.remove(sms)
-                db_entry = db['input'].find_and_modify(query={'_id': smsSplit[1]}, remove=True)
+            try:
+                sms = approved_queue.get_nowait()
+                story_queue.put({'text': sms['text'], 'type': 'publish'})
+                db_entry = db['input'].find_and_modify(query={'_id': sms['id']}, remove=True)
                 db['story'].insert(db_entry)
+            except Empty:
+                pass
         else:
             #if this is the first time after switching modes, mark the time
             if not switchedModes:
                 switchedModes = True
                 start_time = datetime.datetime.now()
+            try:
+                sms = approved_queue.get_nowait()
+                story_queue.put({'text': sms['text'], 'type': 'potential'})
+                smses_round.append(sms)
+            except Empty:
+                pass
 
             #if 30 seconds have passed, choose an sms from the list and push it to the story
             if (datetime.datetime.now() - start_time).seconds > 30:
                 start_time = datetime.datetime.now()
-                if len(smses) == 0:
+                if len(smses_round) == 0:
                     continue
-                chosenSms = choice(smses)
-                chosenSms = chosenSms.split("\t", 1)
-                redis_client.publish('story', chosenSms[0])
-                db_entry = db['input'].find_and_modify(query={'_id': chosenSms[1]}, remove=True)
+                chosenSms = choice(smses_round)
+                story_queue.put({'text': chosenSms['text'], 'type': 'publish'})
+                db_entry = db['input'].find_and_modify(query={'_id': chosenSms['id']}, remove=True)
                 db['story'].insert(db_entry)
-                smses[:] = []
-
+                smses_round = []
 
         gevent.sleep(0)
+
 
 def main():
     parser = argparse.ArgumentParser(description='SMS Output Service')
@@ -189,6 +199,7 @@ def main():
     gevent.spawn(storyControl)
 
     SocketIOServer((args.host, args.port), flask_app, resource="socket.io").serve_forever()
+
 
 if __name__ == '__main__':
     sys.exit(main())

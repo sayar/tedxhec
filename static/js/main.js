@@ -85,13 +85,22 @@ $(function()
         return pos.reverse();
     }
 
+    var potentials = [""];
     var story = [""];
     update(story);
 
     var socket = io.connect('/sms');
 
+    socket.on('potential', function (msg){
+        //to do
+        console.log("potential: " + msg.text);
+    });
+
     socket.on('sms', function (msg)
     {
+        //edit so that when we receive an sms to publish, clear the
+        //list of potentials
+        console.log("sms: " + msg.text);
         var words = msg.text.split(" ").map(Word);
 
         var end = story.splice(msg.pos);

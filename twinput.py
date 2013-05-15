@@ -30,6 +30,7 @@ def sms():
     """
     Handle SMS received from Twilio, Persist to Mongodb
     """
+    print "Got Message"
     if flask_app.debug:
         import pprint
         pprint.pprint(request.form)
@@ -37,9 +38,9 @@ def sms():
     body = request.form.get('Body', None)
     sid = request.form.get('SmsSid', None)
 
-    if len(body) < 30:
-        print "Too Short Message"
-        return str(twiml.Response())
+    # if len(body) < 30:
+    #     print "Too Short Message"
+    #     return str(twiml.Response())
 
     for word in re.split('\W+', body):
         if (not hunspell_en_CA.spell(word)) and (not hunspell_en_US.spell(word)):
