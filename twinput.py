@@ -30,48 +30,59 @@ def sms():
     """
     Handle SMS received from Twilio, Persist to Mongodb
     """
-    print "Got Message"
     if flask_app.debug:
         import pprint
         pprint.pprint(request.form)
 
-    body = request.form.get('Body', None)
-    sid = request.form.get('SmsSid', None)
-
-    # if len(body) < 30:
-    #     print "Too Short Message"
-    #     return str(twiml.Response())
-
-    for word in re.split('\W+', body):
-        if (not hunspell_en_CA.spell(word)) and (not hunspell_en_US.spell(word)):
-            print "Misspelled word"
-            return str(twiml.Response())
-
-    if prof_filt.check(body):
-        print "Profane Message"
-        return str(twiml.Response())
-
-    print "Good Message"
-
-    # Persist to Mongodb
     db = mongo_client['tedxhec']
-    collection = db['input_raw']
 
-    collection.insert({
-        '_id': request.form.get('SmsSid', None),
-        'From': request.form.get('From', None),
+    # Persist phone numbers for after the presentation thank you message.
+    collection = db['participants']
+    # Save instead of insert as people are expected to participate more than once.
+    collection.save({
+        '_id': request.form.get('From', None),
         'FromZip': request.form.get('FromZip', None),
         'FromCity': request.form.get('FromCity', None),
         'FromState': request.form.get('FromState', None),
         'FromCountry': request.form.get('FromCountry', None),
-        'To': request.form.get('To', None),
+    })
+
+    body = request.form.get('Body', None)
+    sid = request.form.get('SmsSid', None)
+
+    # Kill none and empty messages.
+    if not body or not isinstance(body, basestring) or body.strip() == '':
+        return str(twiml.Response())
+
+    # We don't want message with anything less than a phrase to pop up on the screen.
+    if len(body) < 30:
+        if flask_app.debug:
+            print "Too Short Message: %s" % body
+        return str(twiml.Response())
+
+    # Check for spelling mistakes.
+    for word in re.split('\W+', body):
+        if (not hunspell_en_CA.spell(word)) and (not hunspell_en_US.spell(word)):
+            if flask_app.debug:
+                print "Misspelled Words in Message: %s" % body
+            return str(twiml.Response())
+
+    # Check for profanity
+    if prof_filt.check(body):
+        if flask_app.debug:
+            print "Profane Message: %s" % body
+        return str(twiml.Response())
+
+    # Persist to Mongodb
+    collection = db['input_raw']
+    collection.insert({
+        '_id': request.form.get('SmsSid', None),
         'Body': body,
         'Created': datetime.datetime.now()
     })
 
-    # Check to see if the body is not none or empty
-    if body and isinstance(body, basestring) and body.strip() != '':
-        redis_client.publish('admin_queue', body + "\t" + sid)
+    # Publish to the admin queue
+    redis_client.publish('admin_queue', body + "\t" + sid)
 
     # Return an empty response to Twilio.
     return str(twiml.Response())
