@@ -1,7 +1,7 @@
 body
 {
-    margin: 0px;
-    background-image: url('http://s8.postimg.org/yn0oxlsl1/dark_wood_2_X.png'); /* DARK WOOD */
+    margin: 0;
+    background-image: url('../img/purty_wood.png');
     background-color: #FFFFFF;
     background-repeat: repeat;
 }
@@ -10,19 +10,14 @@ svg
 {
     position: absolute;         /*orig fixed */
     padding: 1cm;
-    word-wrap: break-word;      
+    word-wrap: break-word;
     
-    overflow: scroll; 
-    
-   height: 100%;
+    height: 100%;
     width:80%;      /*may look weird fi not in presentation mode CHROME made */
-   
-    margin-top:50px;
-    margin-bottom:100px;
-    margin-right:50px;
-    margin-left:80px;
 
-    background-image: url('http://s22.postimg.org/5b6mwed75/linedpaper_2x.png');
+    margin: 50px 50px 100px 80px;
+
+    background-image: url('../img/linedpaper_2x.png');
     
    -moz-box-shadow: 0 0 8px 8px #888;
     -webkit-box-shadow: 0 0 8px 8px#888;
