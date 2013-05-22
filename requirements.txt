@@ -6,6 +6,9 @@ pymongo
 flask
 requests
 twilio
+numpy
+matplotlib
+multi-mechanize
 
 redis
 
