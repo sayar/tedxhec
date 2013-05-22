@@ -26,15 +26,123 @@ flask_app = Flask(__name__)
 mongo_client = MongoClient(settings.MONGODB_HOST, int(settings.MONGODB_PORT))
 redis_client = redis.client.StrictRedis(settings.REDIS_HOST, int(settings.REDIS_PORT))
 
+unapproved_queue = Queue()
+approved_queue = Queue()
+story_queue = Queue()
+
 story_mode = "Everything"
 
-story_queue = Queue()
-approved_queue = Queue()
+
+def queue_from_redis():
+    """
+    Take all messages and put them into the unapproved queue.
+    """
+    sub = redis_client.pubsub()
+    sub.subscribe('admin_queue')
+    while True:
+        for sms in sub.listen():
+            data = sms['data']
+            if isinstance(data, basestring):
+                data = data.split("\t", 1)
+                msg = {'text': data[0], 'sid': data[1]}
+                unapproved_queue.put_nowait(msg)
+        gevent.sleep(0)
 
 
-class SMSNamespace(BaseNamespace):
+class AdminNamespace(BaseNamespace):
+    waiting_for_approval = None
+
+    def recv_connect(self):
+        def emit_unapproved_message():
+            while True:
+                if self.waiting_for_approval:
+                    item = unapproved_queue.get(True)
+                    self.waiting_for_approval = item
+                    self.emit('admin', item)
+
+                gevent.sleep(0)
+        gevent.spawn(emit_unapproved_message)
+
+        def emit_story_mode():
+            while True:
+                self.emit("print_mode", {'mode': story_mode})
+                gevent.sleep(2)
+        gevent.spawn(emit_story_mode)
+
+    def on_approve_sms(self, message):
+        db = mongo_client['tedxhec']
+        entry = db['input_raw'].find_one(self.waiting_for_approval['sid'])
+        db['input_approved'].insert(entry)
+
+        approved_queue.put_nowait(self.waiting_for_approval)
+        self.waiting_for_approval = None
+
+    def on_unapprove_sms(self, message):
+        db = mongo_client['tedxhec']
+        entry = db['input_raw'].find_one(self.waiting_for_approval['sid'])
+        db['input_unapproved'].insert(entry)
+
+        approved_queue.put_nowait(self.waiting_for_approval)
+        self.waiting_for_approval = None
+
+    def recv_disconnect(self):
+        if self.waiting_for_approval:
+            unapproved_queue.put_nowait(self.waiting_for_approval)
+
+    def on_change_mode(self, message):
+        if globals()['story_mode'] == "Everything":
+            globals()['story_mode'] = "Rounds"
+        else:
+            globals()['story_mode'] = "Everything"
+
+
+def story_control():
+    switchedModes = False
+    smses_round = []
+    db = mongo_client['tedxhec']
+    start_time = datetime.datetime.now()
+
+    while True:
+        if story_mode == "Everything":
+            switchedModes = False
+            try:
+                sms = approved_queue.get_nowait()
+                entry = db['input_raw'].find_one(sms['sid'])
+                db['story'].insert(entry)
+
+                story_queue.put({'text': sms['text'], 'type': 'publish'})
+            except Empty:
+                pass
+        else:
+            #if this is the first time after switching modes, mark the time
+            if not switchedModes:
+                switchedModes = True
+                start_time = datetime.datetime.now()
+            try:
+                sms = approved_queue.get_nowait()
+                story_queue.put({'text': sms['text'], 'type': 'potential'})
+                smses_round.append(sms)
+            except Empty:
+                pass
+
+            #if 30 seconds have passed, choose an sms from the list and push it to the story
+            if (datetime.datetime.now() - start_time).seconds > 30:
+                start_time = datetime.datetime.now()
+                if len(smses_round) == 0:
+                    continue
+                chosenSms = choice(smses_round)
+
+                entry = db['input_raw'].find_one(chosenSms['sid'])
+                db['story'].insert(entry)
+
+                story_queue.put({'text': chosenSms['text'], 'type': 'publish'})
+                smses_round = []
+
+        gevent.sleep(0)
+
+
+class SMSNamespace(BaseNamespace, BroadcastMixin):
     def initialize(self):
-
         def receive_sms():
             while True:
                 sms = story_queue.get()
@@ -57,67 +165,6 @@ class SMSNamespace(BaseNamespace):
             msg = {'text': sms['Body'], 'pos': -1}
             self.emit('sms', msg)
 
-
-class AdminNamespace(BaseNamespace, BroadcastMixin):
-    removed_smses = []
-
-    def initialize(self):
-        def receive_sms_admin():
-            sub = redis_client.pubsub()
-            sub.subscribe('admin_queue')
-            self.emit('print_mode', {'mode': story_mode})
-            while True:
-                for sms in sub.listen():
-                    data = sms['data']
-                    if isinstance(data, basestring):
-                        data = data.split("\t", 1)
-                        msg = {'text': data[0], 'sid': data[1], 'pos': -1}
-                        self.emit('admin', msg)
-                gevent.sleep(0)
-
-        self.spawn(receive_sms_admin)
-
-    def recv_connect(self):
-        #find all the entries in the database collection input_raw
-        db = mongo_client['tedxhec']
-        smses = db['input_raw']
-
-        for sms in smses.find().sort('Created'):
-            msg = {'text': sms['Body'], 'sid': sms['_id'], 'pos': -1}
-            self.emit('admin', msg)
-
-    def on_approve_sms(self, message):
-        #move the database entry to the input collection
-        db = mongo_client['tedxhec']
-        db_entry = db['input_raw'].find_and_modify(query={'_id': message["id"]}, remove=True)
-        db['input'].insert(db_entry)
-
-        #publish the text for the story controller
-        approved_queue.put({'text': message["text"], 'id': message["id"]})
-
-        #signal all admin pages to remove this sms from the page
-        self.broadcast_event_not_me('admin_remove', {'sid': message["id"]})
-
-    def on_change_mode(self, message):
-        if globals()['story_mode'] == "Everything":
-            globals()['story_mode'] = "Rounds"
-        else:
-            globals()['story_mode'] = "Everything"
-        self.broadcast_event('print_mode', {'mode': story_mode})
-
-    def on_remove_sms(self, message):
-        #put the id into the list of ids we manually removed
-        self.removed_smses.append(message["id"])
-
-        #transfer the database entry to the input_removed collection
-        db = mongo_client['tedxhec']
-        db_entry = db['input_raw'].find_and_modify(query={'_id': message["id"]}, remove=True)
-        db['input_removed'].insert(db_entry)
-
-        #signal all the other admin pages to remove this element
-        self.broadcast_event_not_me('admin_remove', {'sid': message["id"]})
-
-
 @flask_app.route('/')
 def index():
     return render_template('index.html')
@@ -132,6 +179,7 @@ def admin():
 def clear():
     db = mongo_client['tedxhec']
     db['input'].remove(None)
+    #TODO: UPDATE...
     db['input_raw'].remove(None)
     db['input_removed'].remove(None)
 
@@ -148,47 +196,6 @@ def socketio(remaining):
     return Response()
 
 
-def storyControl():
-    switchedModes = False
-    db = mongo_client['tedxhec']
-    smses_round = []
-
-    while True:
-        if story_mode == "Everything":
-            switchedModes = False
-            try:
-                sms = approved_queue.get_nowait()
-                story_queue.put({'text': sms['text'], 'type': 'publish'})
-                db_entry = db['input'].find_and_modify(query={'_id': sms['id']}, remove=True)
-                db['story'].insert(db_entry)
-            except Empty:
-                pass
-        else:
-            #if this is the first time after switching modes, mark the time
-            if not switchedModes:
-                switchedModes = True
-                start_time = datetime.datetime.now()
-            try:
-                sms = approved_queue.get_nowait()
-                story_queue.put({'text': sms['text'], 'type': 'potential'})
-                smses_round.append(sms)
-            except Empty:
-                pass
-
-            #if 30 seconds have passed, choose an sms from the list and push it to the story
-            if (datetime.datetime.now() - start_time).seconds > 30:
-                start_time = datetime.datetime.now()
-                if len(smses_round) == 0:
-                    continue
-                chosenSms = choice(smses_round)
-                story_queue.put({'text': chosenSms['text'], 'type': 'publish'})
-                db_entry = db['input'].find_and_modify(query={'_id': chosenSms['id']}, remove=True)
-                db['story'].insert(db_entry)
-                smses_round = []
-
-        gevent.sleep(0)
-
-
 def main():
     parser = argparse.ArgumentParser(description='SMS Output Service')
     parser.add_argument('-P', '--port', action='store', default=8080, dest='port', type=int)
@@ -196,7 +203,9 @@ def main():
 
     args = parser.parse_args()
 
-    gevent.spawn(storyControl)
+    for i in range(3):
+        gevent.spawn(queue_from_redis)
+    gevent.spawn(story_control)
 
     SocketIOServer((args.host, args.port), flask_app, resource="socket.io").serve_forever()
 
