@@ -13,16 +13,19 @@ svg
     word-wrap: break-word;
     
     height: 100%;
-    width:80%;      /*may look weird fi not in presentation mode CHROME made */
+    width:91%;      /*may look weird fi not in presentation mode CHROME made */
 
-    margin: 50px 50px 100px 80px;
+   margin: 10px 50px 50px 50px; 
 
     background-image: url('../img/linedpaper_2x.png');
     
    -moz-box-shadow: 0 0 8px 8px #888;
     -webkit-box-shadow: 0 0 8px 8px#888;
     box-shadow: 0 0 8px 8px #888;
-}    
+    
+    overflow:hidden;
+}
+
  
 
 text
@@ -36,6 +39,8 @@ h3
     font-family: 'Quicksand', normal;
     text-align: center;
     font-size: 60px;
-    color: #FFFFDB;
-    line-height: 10px;
+    color: #737373;
+    line-height: 0px;
 }
+
+
