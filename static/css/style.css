@@ -4,6 +4,7 @@ body
     background-image: url('../img/purty_wood.png');
     background-color: #FFFFFF;
     background-repeat: repeat;
+    overflow: hidden;
 }
 
 svg

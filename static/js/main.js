@@ -86,7 +86,7 @@ $(function()
     }
 
     var potentials = [""];
-    var story = ["Once Upon A Time"];
+    var story = ["Once Upon A Time",""];
     update(story);
 
     var socket = io.connect('/sms');
