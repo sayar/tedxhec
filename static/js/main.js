@@ -86,7 +86,9 @@ $(function()
     }
 
     var potentials = [""];
-    var story = ["Once Upon A Time",""];
+    var story = [""];
+    var once = "Once Upon A Time".split(" ").map(Word);
+    story = story.concat(words, -1);
     update(story);
 
     var socket = io.connect('/sms');
