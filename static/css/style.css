@@ -13,9 +13,9 @@ svg
     word-wrap: break-word;
     
     height: 100%;
-    width:80%;      /*may look weird fi not in presentation mode CHROME made */
+    width:90%;      /*may look weird fi not in presentation mode CHROME made */
 
-    margin: 50px 50px 100px 80px;
+    margin: 50px 50px 50px 50px;
 
     background-image: url('../img/linedpaper_2x.png');
     
