@@ -1,5 +1,5 @@
 sudo apt-get install supervisor
-sudo echo_supervisord_conf > /etc/supervisord.conf
+sudo cat supervisord.conf.skel > /etc/supervisord.conf
 sudo echo "[program:tedxfrontend]
 command=/usr/bin/python /home/ubuntu/tedxhec/serve.py -P 80
 autorestart=true" >> /etc/supervisord.conf
