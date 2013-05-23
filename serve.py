@@ -185,6 +185,7 @@ def clear():
     db['input_approved'].remove(None)
     db['input_unapproved'].remove(None)
     db['story'].remove(None)
+    redis_client.flushall()
 
     # Not sure if this is the correct way of doing this... there is no clear method.
     while not unapproved_queue.empty():
