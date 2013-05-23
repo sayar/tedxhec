@@ -181,10 +181,20 @@ def admin():
 @flask_app.route('/clear')
 def clear():
     db = mongo_client['tedxhec']
-    db['input'].remove(None)
-    #TODO: UPDATE...
     db['input_raw'].remove(None)
-    db['input_removed'].remove(None)
+    db['input_approved'].remove(None)
+    db['input_unapproved'].remove(None)
+    db['story'].remove(None)
+
+    # Not sure if this is the correct way of doing this... there is no clear method.
+    while not unapproved_queue.empty():
+        unapproved_queue.get(True)
+
+    while not approved_queue.empty():
+        approved_queue.get(True)
+
+    while not story_queue.empty():
+        story_queue.get(True)
 
     return Response()
 
