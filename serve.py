@@ -72,7 +72,7 @@ class AdminNamespace(BaseNamespace):
     def on_approve_sms(self, message):
         db = mongo_client['tedxhec']
         entry = db['input_raw'].find_one(self.waiting_for_approval['sid'])
-        db['input_approved'].save(entry)
+        db['input_approved'].insert(entry)
 
         copy = self.waiting_for_approval
         self.waiting_for_approval = None  # let other gevent threads work properly.
@@ -81,7 +81,7 @@ class AdminNamespace(BaseNamespace):
     def on_remove_sms(self, message):
         db = mongo_client['tedxhec']
         entry = db['input_raw'].find_one(self.waiting_for_approval['sid'])
-        db['input_unapproved'].save(entry)
+        db['input_unapproved'].insert(entry)
 
         copy = self.waiting_for_approval
         self.waiting_for_approval = None  # let other gevent threads work properly.
@@ -111,7 +111,7 @@ def story_control():
             try:
                 sms = approved_queue.get_nowait()
                 entry = db['input_raw'].find_one(sms['sid'])
-                db['story'].save(entry)
+                db['story'].insert(entry)
 
                 story_queue.put({'text': sms['text'], 'type': 'publish'})
             except Empty:
@@ -136,7 +136,7 @@ def story_control():
                 chosenSms = choice(smses_round)
 
                 entry = db['input_raw'].find_one(chosenSms['sid'])
-                db['story'].save(entry)
+                db['story'].insert(entry)
 
                 story_queue.put({'text': chosenSms['text'], 'type': 'publish'})
                 smses_round = []
