@@ -46,6 +46,7 @@ def queue_from_redis():
                 data = data.split("\t", 1)
                 msg = {'text': data[0], 'sid': data[1]}
                 unapproved_queue.put_nowait(msg)
+
         gevent.sleep(0)
 
 
@@ -55,11 +56,10 @@ class AdminNamespace(BaseNamespace):
     def recv_connect(self):
         def emit_unapproved_message():
             while True:
-                if self.waiting_for_approval:
+                if not self.waiting_for_approval:
                     item = unapproved_queue.get(True)
                     self.waiting_for_approval = item
                     self.emit('admin', item)
-
                 gevent.sleep(0)
         gevent.spawn(emit_unapproved_message)
 
@@ -72,18 +72,21 @@ class AdminNamespace(BaseNamespace):
     def on_approve_sms(self, message):
         db = mongo_client['tedxhec']
         entry = db['input_raw'].find_one(self.waiting_for_approval['sid'])
-        db['input_approved'].insert(entry)
+        db['input_approved'].save(entry)
 
-        approved_queue.put_nowait(self.waiting_for_approval)
-        self.waiting_for_approval = None
+        copy = self.waiting_for_approval
+        self.waiting_for_approval = None  # let other gevent threads work properly.
+        approved_queue.put_nowait(copy)
 
-    def on_unapprove_sms(self, message):
+    def on_remove_sms(self, message):
         db = mongo_client['tedxhec']
         entry = db['input_raw'].find_one(self.waiting_for_approval['sid'])
-        db['input_unapproved'].insert(entry)
+        db['input_unapproved'].save(entry)
 
-        approved_queue.put_nowait(self.waiting_for_approval)
-        self.waiting_for_approval = None
+        copy = self.waiting_for_approval
+        self.waiting_for_approval = None  # let other gevent threads work properly.
+        approved_queue.put_nowait(copy)
+
 
     def recv_disconnect(self):
         if self.waiting_for_approval:
@@ -108,7 +111,7 @@ def story_control():
             try:
                 sms = approved_queue.get_nowait()
                 entry = db['input_raw'].find_one(sms['sid'])
-                db['story'].insert(entry)
+                db['story'].save(entry)
 
                 story_queue.put({'text': sms['text'], 'type': 'publish'})
             except Empty:
@@ -133,7 +136,7 @@ def story_control():
                 chosenSms = choice(smses_round)
 
                 entry = db['input_raw'].find_one(chosenSms['sid'])
-                db['story'].insert(entry)
+                db['story'].save(entry)
 
                 story_queue.put({'text': chosenSms['text'], 'type': 'publish'})
                 smses_round = []
@@ -178,10 +181,20 @@ def admin():
 @flask_app.route('/clear')
 def clear():
     db = mongo_client['tedxhec']
-    db['input'].remove(None)
-    #TODO: UPDATE...
     db['input_raw'].remove(None)
-    db['input_removed'].remove(None)
+    db['input_approved'].remove(None)
+    db['input_unapproved'].remove(None)
+    db['story'].remove(None)
+
+    # Not sure if this is the correct way of doing this... there is no clear method.
+    while not unapproved_queue.empty():
+        unapproved_queue.get(True)
+
+    while not approved_queue.empty():
+        approved_queue.get(True)
+
+    while not story_queue.empty():
+        story_queue.get(True)
 
     return Response()
 
@@ -203,8 +216,7 @@ def main():
 
     args = parser.parse_args()
 
-    for i in range(3):
-        gevent.spawn(queue_from_redis)
+    gevent.spawn(queue_from_redis)
     gevent.spawn(story_control)
 
     SocketIOServer((args.host, args.port), flask_app, resource="socket.io").serve_forever()
