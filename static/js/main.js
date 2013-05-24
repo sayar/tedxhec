@@ -100,7 +100,7 @@ $(function()
         //         update(story);
         //      }
         //
-        //      if (   WORD IS SELECTED AS SMS NO LONGER POTENTIAL (ENTER ON ROUND ROBIN) ) {
+        //      if ( WORD IS SELECTED AS SMS NO LONGER POTENTIAL (ENTER ON ROUND ROBIN) ) {
         //          REMOVE UNTIL BACK AT ORIGINAL CURSOR + NEW APPROVED MESSAGE
         //          AND DO FOR THE NEXT SET OF POTENTIALS 
         //
