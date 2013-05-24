@@ -19,10 +19,7 @@ class Filter(object):
         
     """
     def __init__(self, clean_word='****'):
-        
-        bad_words_file = open('bad_words.txt', 'r')
-        
-        self.bad_words = set(line.strip('\n') + '\\b' for line in open('bad_words.txt'))
+        self.bad_words = set(line.strip('\n') for line in open('bad_words.txt'))
         self.clean_word = clean_word
         
     def clean(self, string):
@@ -31,8 +28,8 @@ class Filter(object):
         return r.sub(self.clean_word, string)
 
     def check(self, string):
-        exp = '(%s)' %'|'.join(self.bad_words)
-        if re.match(exp, string.lower()):
+        exp = '\\b(%s)\\b' % '|'.join(self.bad_words)
+        if re.search(exp, string.lower()):
             return True
         else:
             return False
