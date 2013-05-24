@@ -31,6 +31,7 @@ approved_queue = Queue()
 story_queue = Queue()
 
 story_mode = "Everything"
+CHOICE_TIME_SPAN = 20
 
 
 def queue_from_redis():
@@ -129,7 +130,7 @@ def story_control():
                 pass
 
             #if 30 seconds have passed, choose an sms from the list and push it to the story
-            if (datetime.datetime.now() - start_time).seconds > 30:
+            if (datetime.datetime.now() - start_time).seconds > CHOICE_TIME_SPAN:
                 start_time = datetime.datetime.now()
                 if len(smses_round) == 0:
                     continue
