@@ -64,10 +64,11 @@ class AdminNamespace(BaseNamespace):
             while True:
                 if not self.waiting_for_approval:
                     #item = unapproved_queue.get(True)
-                    item = unapproved_queue.pop(0)
-                    #unapproved_queue.task_done()
-                    self.waiting_for_approval = item
-                    self.emit('admin', item)
+                    if len(unapproved_queue) > 0:
+                        item = unapproved_queue.pop(0)
+                        #unapproved_queue.task_done()
+                        self.waiting_for_approval = item
+                        self.emit('admin', item)
                 gevent.sleep(0)
         gevent.spawn(emit_unapproved_message)
 
@@ -121,15 +122,16 @@ def story_control():
             switchedModes = False
             #try:
             #sms = approved_queue.get_nowait()
-            sms = approved_queue.pop(0)
-            #approved_queue.task_done()
-            entry = db['input_raw'].find_one(sms['sid'])
-            db['story'].insert(entry)
+            if len(approved_queue) > 0:
+                sms = approved_queue.pop(0)
+                #approved_queue.task_done()
+                entry = db['input_raw'].find_one(sms['sid'])
+                db['story'].insert(entry)
 
-            #story_queue.put({'text': sms['text'], 'type': 'publish'})
-            story_queue.append({'text': sms['text'], 'type': 'publish'})
-            #except Empty:
-            #    pass
+                #story_queue.put({'text': sms['text'], 'type': 'publish'})
+                story_queue.append({'text': sms['text'], 'type': 'publish'})
+                #except Empty:
+                #    pass
         else:
             #if this is the first time after switching modes, mark the time
             if not switchedModes:
@@ -137,13 +139,14 @@ def story_control():
                 start_time = datetime.datetime.now()
             #try:
             #sms = approved_queue.get_nowait()
-            sms = approved_queue.pop(0)
-            #approved_queue.task_done()
-            #story_queue.put({'text': sms['text'], 'type': 'potential'})
-            story_queue.append({'text': sms['text'], 'type': 'potential'})
-            smses_round.append(sms)
-            #except Empty:
-            #    pass
+            if len(approved_queue) > 0:
+                sms = approved_queue.pop(0)
+                #approved_queue.task_done()
+                #story_queue.put({'text': sms['text'], 'type': 'potential'})
+                story_queue.append({'text': sms['text'], 'type': 'potential'})
+                smses_round.append(sms)
+                #except Empty:
+                #    pass
 
             #if 30 seconds have passed, choose an sms from the list and push it to the story
             if (datetime.datetime.now() - start_time).seconds > CHOICE_TIME_SPAN:
@@ -167,14 +170,15 @@ class SMSNamespace(BaseNamespace, BroadcastMixin):
         def receive_sms():
             while True:
                 #sms = story_queue.get()
-                sms = story_queue.pop(0)
-                #story_queue.task_done()
-                if sms['type'] == 'publish':
-                    msg = {'text': sms['text'], 'pos': -1}
-                    self.emit('sms', msg)
-                else:
-                    msg = {'text': sms['text']}
-                    self.emit('potential', msg)
+                if len(story_queue) > 0:
+                    sms = story_queue.pop(0)
+                    #story_queue.task_done()
+                    if sms['type'] == 'publish':
+                        msg = {'text': sms['text'], 'pos': -1}
+                        self.emit('sms', msg)
+                    else:
+                        msg = {'text': sms['text']}
+                        self.emit('potential', msg)
                 gevent.sleep(0)
 
         self.spawn(receive_sms)
