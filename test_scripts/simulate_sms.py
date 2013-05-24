@@ -7,7 +7,7 @@ class Transaction(object):
         pass
 
     def run(self):
-      r = requests.post("http://localhost:5000/input", data={
+      r = requests.post("http://ec2-23-20-181-107.compute-1.amazonaws.com:5000/input", data={
             'From': "+1%s" % ''.join(random.choice(string.digits) for x in range(10)),
             'FromZip': "000000",
             'FromCity': "Montreal",
