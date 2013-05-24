@@ -10,7 +10,7 @@ if __name__ == '__main__':
           'FromCity': "Montreal",
           'FromState': "QC",
           'FromCountry': "CA",
-          'Body': "HELLO WORLD, THIS PIECE OF SOFTWARE IS AWESOME. MECHANIZE ROCKS.",
+          'Body': "HELLO WORLD, THIS PIECE OF SOFTWARE IS AWESOME. MECHANIZE ROCKS. %s" % str(random.choice(range(10))),
           'SmsSid': ''.join(random.choice(string.ascii_uppercase + string.digits) for x in range(10))
     })
 

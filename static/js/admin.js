@@ -82,4 +82,8 @@ $(function(){
     $("#modechange").click(function (){
         socket.emit('change_mode',{});
     });
+
+    $("#clear").click(function(){
+        socket.emit('clear',{});
+    });
 });

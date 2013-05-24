@@ -95,8 +95,6 @@ class AdminNamespace(BaseNamespace):
 
         copy = self.waiting_for_approval
         self.waiting_for_approval = None  # let other gevent threads work properly.
-        #approved_queue.put_nowait(copy)
-        approved_queue.append(copy)
 
 
     def recv_disconnect(self):
@@ -110,6 +108,29 @@ class AdminNamespace(BaseNamespace):
         else:
             globals()['story_mode'] = "Everything"
 
+    def on_clear(self, message):
+        db = mongo_client['tedxhec']
+        db['input_raw'].remove(None)
+        db['input_approved'].remove(None)
+        db['input_unapproved'].remove(None)
+        db['story'].remove(None)
+        redis_client.flushall()
+
+        # Not sure if this is the correct way of doing this... there is no clear method.
+        #while not unapproved_queue.empty():
+            #unapproved_queue.get(True)
+            #unapproved_queue.task_done()
+        del unapproved_queue[:]
+
+        #while not approved_queue.empty():
+        #    approved_queue.get(True)
+        #    approved_queue.task_done()
+        del approved_queue[:]
+
+        #while not story_queue.empty():
+        #    story_queue.get(True)
+        #    story_queue.task_done()
+        del story_queue[:]
 
 def story_control():
     switchedModes = False
@@ -175,10 +196,10 @@ class SMSNamespace(BaseNamespace, BroadcastMixin):
                     #story_queue.task_done()
                     if sms['type'] == 'publish':
                         msg = {'text': sms['text'], 'pos': -1}
-                        self.emit('sms', msg)
+                        self.broadcast_event('sms', msg)
                     else:
                         msg = {'text': sms['text']}
-                        self.emit('potential', msg)
+                        self.broadcast_event('potential', msg)
                 gevent.sleep(0)
 
         self.spawn(receive_sms)
@@ -200,34 +221,6 @@ def index():
 @flask_app.route('/admin')
 def admin():
     return render_template('admin.html')
-
-
-@flask_app.route('/clear')
-def clear():
-    db = mongo_client['tedxhec']
-    db['input_raw'].remove(None)
-    db['input_approved'].remove(None)
-    db['input_unapproved'].remove(None)
-    db['story'].remove(None)
-    redis_client.flushall()
-
-    # Not sure if this is the correct way of doing this... there is no clear method.
-    #while not unapproved_queue.empty():
-        #unapproved_queue.get(True)
-        #unapproved_queue.task_done()
-    del unapproved_queue[:]
-
-    #while not approved_queue.empty():
-    #    approved_queue.get(True)
-    #    approved_queue.task_done()
-    del approved_queue[:]
-
-    #while not story_queue.empty():
-    #    story_queue.get(True)
-    #    story_queue.task_done()
-    del story_queue[:]
-
-    return Response()
 
 
 @flask_app.route('/socket.io/<path:remaining>')
