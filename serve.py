@@ -10,7 +10,7 @@ import datetime
 from random import choice
 
 from gevent import monkey
-from gevent.queue import Queue, Empty
+#from gevent.queue import Queue, Empty
 
 monkey.patch_all()
 from pymongo import MongoClient
@@ -26,9 +26,13 @@ flask_app = Flask(__name__)
 mongo_client = MongoClient(settings.MONGODB_HOST, int(settings.MONGODB_PORT))
 redis_client = redis.client.StrictRedis(settings.REDIS_HOST, int(settings.REDIS_PORT))
 
-unapproved_queue = Queue()
-approved_queue = Queue()
-story_queue = Queue()
+#unapproved_queue = Queue()
+#approved_queue = Queue()
+#story_queue = Queue()
+
+unapproved_queue = []
+approved_queue = []
+story_queue = []
 
 story_mode = "Everything"
 CHOICE_TIME_SPAN = 20
@@ -46,7 +50,8 @@ def queue_from_redis():
             if isinstance(data, basestring):
                 data = data.split("\t", 1)
                 msg = {'text': data[0], 'sid': data[1]}
-                unapproved_queue.put_nowait(msg)
+                #unapproved_queue.put_nowait(msg)
+                unapproved_queue.append(msg)
 
         gevent.sleep(0)
 
@@ -58,8 +63,9 @@ class AdminNamespace(BaseNamespace):
         def emit_unapproved_message():
             while True:
                 if not self.waiting_for_approval:
-                    item = unapproved_queue.get(True)
-                    unapproved_queue.task_done()
+                    #item = unapproved_queue.get(True)
+                    item = unapproved_queue.pop(0)
+                    #unapproved_queue.task_done()
                     self.waiting_for_approval = item
                     self.emit('admin', item)
                 gevent.sleep(0)
@@ -78,7 +84,8 @@ class AdminNamespace(BaseNamespace):
 
         copy = self.waiting_for_approval
         self.waiting_for_approval = None  # let other gevent threads work properly.
-        approved_queue.put_nowait(copy)
+        #approved_queue.put_nowait(copy)
+        approved_queue.append(copy)
 
     def on_remove_sms(self, message):
         db = mongo_client['tedxhec']
@@ -87,12 +94,14 @@ class AdminNamespace(BaseNamespace):
 
         copy = self.waiting_for_approval
         self.waiting_for_approval = None  # let other gevent threads work properly.
-        approved_queue.put_nowait(copy)
+        #approved_queue.put_nowait(copy)
+        approved_queue.append(copy)
 
 
     def recv_disconnect(self):
         if self.waiting_for_approval:
-            unapproved_queue.put_nowait(self.waiting_for_approval)
+            #unapproved_queue.put_nowait(self.waiting_for_approval)
+            unapproved_queue.append(self.waiting_for_approval)
 
     def on_change_mode(self, message):
         if globals()['story_mode'] == "Everything":
@@ -110,27 +119,31 @@ def story_control():
     while True:
         if story_mode == "Everything":
             switchedModes = False
-            try:
-                sms = approved_queue.get_nowait()
-                approved_queue.task_done()
-                entry = db['input_raw'].find_one(sms['sid'])
-                db['story'].insert(entry)
+            #try:
+            #sms = approved_queue.get_nowait()
+            sms = approved_queue.pop(0)
+            #approved_queue.task_done()
+            entry = db['input_raw'].find_one(sms['sid'])
+            db['story'].insert(entry)
 
-                story_queue.put({'text': sms['text'], 'type': 'publish'})
-            except Empty:
-                pass
+            #story_queue.put({'text': sms['text'], 'type': 'publish'})
+            story_queue.append({'text': sms['text'], 'type': 'publish'})
+            #except Empty:
+            #    pass
         else:
             #if this is the first time after switching modes, mark the time
             if not switchedModes:
                 switchedModes = True
                 start_time = datetime.datetime.now()
-            try:
-                sms = approved_queue.get_nowait()
-                approved_queue.task_done()
-                story_queue.put({'text': sms['text'], 'type': 'potential'})
-                smses_round.append(sms)
-            except Empty:
-                pass
+            #try:
+            #sms = approved_queue.get_nowait()
+            sms = approved_queue.pop(0)
+            #approved_queue.task_done()
+            #story_queue.put({'text': sms['text'], 'type': 'potential'})
+            story_queue.append({'text': sms['text'], 'type': 'potential'})
+            smses_round.append(sms)
+            #except Empty:
+            #    pass
 
             #if 30 seconds have passed, choose an sms from the list and push it to the story
             if (datetime.datetime.now() - start_time).seconds > CHOICE_TIME_SPAN:
@@ -142,7 +155,8 @@ def story_control():
                 entry = db['input_raw'].find_one(chosenSms['sid'])
                 db['story'].insert(entry)
 
-                story_queue.put({'text': chosenSms['text'], 'type': 'publish'})
+                #story_queue.put({'text': chosenSms['text'], 'type': 'publish'})
+                story_queue.append({'text': chosenSms['text'], 'type': 'publish'})
                 smses_round = []
 
         gevent.sleep(0)
@@ -152,8 +166,9 @@ class SMSNamespace(BaseNamespace, BroadcastMixin):
     def initialize(self):
         def receive_sms():
             while True:
-                sms = story_queue.get()
-                story_queue.task_done()
+                #sms = story_queue.get()
+                sms = story_queue.pop(0)
+                #story_queue.task_done()
                 if sms['type'] == 'publish':
                     msg = {'text': sms['text'], 'pos': -1}
                     self.emit('sms', msg)
@@ -193,17 +208,20 @@ def clear():
     redis_client.flushall()
 
     # Not sure if this is the correct way of doing this... there is no clear method.
-    while not unapproved_queue.empty():
-        unapproved_queue.get(True)
-        unapproved_queue.task_done()
+    #while not unapproved_queue.empty():
+        #unapproved_queue.get(True)
+        #unapproved_queue.task_done()
+    del unapproved_queue[:]
 
-    while not approved_queue.empty():
-        approved_queue.get(True)
-        approved_queue.task_done()
+    #while not approved_queue.empty():
+    #    approved_queue.get(True)
+    #    approved_queue.task_done()
+    del approved_queue[:]
 
-    while not story_queue.empty():
-        story_queue.get(True)
-        story_queue.task_done()
+    #while not story_queue.empty():
+    #    story_queue.get(True)
+    #    story_queue.task_done()
+    del story_queue[:]
 
     return Response()
 
