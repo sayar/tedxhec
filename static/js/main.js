@@ -85,6 +85,31 @@ $(function()
         return pos.reverse();
     }
 
+        //
+        //  ***CURSOR IS AT THE END OF NON POTENTIAL FULLY APPROAVED MESSAGES ON PAGE
+        //  GO THROUGH ALL POTENTIALS IN ARRAY AND ADD TO STORY
+        // ONCE A NEW APPROVED MESSAGE HAS BEEN SELECTED, REMOVE ALL NON APPROVED POTENTIAL MESSAGES WE CONCAT
+        // TO END AND DO FOR NEXT
+        //  
+        // function tempPotentials(potentials) {
+        //
+        //      var cursor = this.getComputedTextLength() + SPACE;
+        //
+        //      for (var i = 0; i < potentials.length; i++) {
+        //         story = story.concat(potentials[i]);
+        //         update(story);
+        //      }
+        //
+        //      if (   WORD IS SELECTED AS SMS NO LONGER POTENTIAL (ENTER ON ROUND ROBIN) ) {
+        //          REMOVE UNTIL BACK AT ORIGINAL CURSOR + NEW APPROVED MESSAGE
+        //          AND DO FOR THE NEXT SET OF POTENTIALS 
+        //
+        //    }
+        //  
+        //
+        //  }
+
+
     var potentials = [""];
     var story = [""];
     var once = "Once Upon A Time".split(" ").map(Word);
@@ -105,6 +130,8 @@ $(function()
         console.log("sms: " + msg.text);
         var words = msg.text.split(" ").map(Word);
 
+   
+        
         var end = story.splice(msg.pos);
         story = story.concat(words, end);
 
