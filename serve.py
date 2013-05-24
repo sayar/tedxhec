@@ -59,6 +59,7 @@ class AdminNamespace(BaseNamespace):
             while True:
                 if not self.waiting_for_approval:
                     item = unapproved_queue.get(True)
+                    unapproved_queue.task_done()
                     self.waiting_for_approval = item
                     self.emit('admin', item)
                 gevent.sleep(0)
@@ -111,6 +112,7 @@ def story_control():
             switchedModes = False
             try:
                 sms = approved_queue.get_nowait()
+                approved_queue.task_done()
                 entry = db['input_raw'].find_one(sms['sid'])
                 db['story'].insert(entry)
 
@@ -124,6 +126,7 @@ def story_control():
                 start_time = datetime.datetime.now()
             try:
                 sms = approved_queue.get_nowait()
+                approved_queue.task_done()
                 story_queue.put({'text': sms['text'], 'type': 'potential'})
                 smses_round.append(sms)
             except Empty:
@@ -150,6 +153,7 @@ class SMSNamespace(BaseNamespace, BroadcastMixin):
         def receive_sms():
             while True:
                 sms = story_queue.get()
+                story_queue.task_done()
                 if sms['type'] == 'publish':
                     msg = {'text': sms['text'], 'pos': -1}
                     self.emit('sms', msg)
@@ -191,12 +195,15 @@ def clear():
     # Not sure if this is the correct way of doing this... there is no clear method.
     while not unapproved_queue.empty():
         unapproved_queue.get(True)
+        unapproved_queue.task_done()
 
     while not approved_queue.empty():
         approved_queue.get(True)
+        approved_queue.task_done()
 
     while not story_queue.empty():
         story_queue.get(True)
+        story_queue.task_done()
 
     return Response()
 
