@@ -25,6 +25,7 @@ hunspell_en_CA = hunspell.HunSpell('/usr/share/hunspell/en_CA.dic', '/usr/share/
 hunspell_en_US = hunspell.HunSpell('/usr/share/hunspell/en_US.dic', '/usr/share/hunspell/en_US.aff')
 prof_filt = Filter()
 
+
 @flask_app.route('/input', methods=['POST'])
 def sms():
     """

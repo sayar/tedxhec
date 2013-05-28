@@ -1,5 +1,4 @@
-body
-{
+body {
     margin: 0;
     background-image: url('../img/purty_wood.png');
     background-color: #FFFFFF;
@@ -7,36 +6,31 @@ body
     overflow: hidden;
 }
 
-svg
-{
-    position: absolute;         /*orig fixed */
+svg {
+    position: absolute; /*orig fixed */
     padding: 1cm;
     word-wrap: break-word;
-    
-    height: 100%;
-    width:91%;      /*may look weird fi not in presentation mode CHROME made */
 
-   margin: 10px 50px 50px 50px; 
+    height: 100%;
+    width: 91%; /*may look weird fi not in presentation mode CHROME made */
+
+    margin: 10px 50px 50px 50px;
 
     background-image: url('../img/linedpaper_2x.png');
-    
-   -moz-box-shadow: 0 0 8px 8px #888;
-    -webkit-box-shadow: 0 0 8px 8px#888;
+
+    -moz-box-shadow: 0 0 8px 8px #888;
+    -webkit-box-shadow: 0 0 8px 8px #888;
     box-shadow: 0 0 8px 8px #888;
-    
-    overflow:hidden;
+
+    overflow: hidden;
 }
 
- 
-
-text
-{
+text {
     font-family: 'Just Me Again Down Here', cursive; /*hard ot read? */
     text-align: center;
 }
 
-h3
-{
+h3 {
     font-family: 'Quicksand', normal;
     text-align: center;
     font-size: 60px;

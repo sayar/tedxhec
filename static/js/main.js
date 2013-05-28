@@ -1,75 +1,74 @@
 'use strict';
 
-$(function()
-{
+$(function () {
     var SPACE = 20;
     var FONT_SIZE = 50;     //changed from 64 
 
     var svg = d3.select('body')
-                .append('svg').attr('id', "textarea")
-                .append('g')
-                    .attr('transform', 'translate(0, ' + FONT_SIZE + ')')
-                .append('text')
-                    .attr('font-size', FONT_SIZE);
+        .append('svg').attr('id', "textarea")
+        .append('g')
+        .attr('transform', 'translate(0, ' + FONT_SIZE + ')')
+        .append('text')
+        .attr('font-size', FONT_SIZE);
 
-    
-    console.log($("#textarea").width());
+    var text_area = $("#textarea");
     var color = d3.scale.category10(),
-        width = d3.scale.linear().range([0, $("#textarea").width()]),
-        height = d3.scale.linear().range([0, $("#textarea").height()]);
+        width = d3.scale.linear().range([0, text_area.width()]),
+        height = d3.scale.linear().range([0, text_area.height()]);
 
     var wordID = 0;
 
-    function Word(text)
-    {
-        if (this)
-        {
+    function Word(text) {
+        if (this) {
             this.id = wordID++;
             this.text = text;
         }
 
         else return new Word(text);
-        
+
     }
 
-    Word.prototype.toString = function ()
-    {
+    Word.prototype.toString = function () {
         return this.text;
-    
+
     };
 
-    function update(data)
-    {
+    function update(data) {
         var words = svg.selectAll('tspan')
-                       .data(data, function (d) { return d.id; });
+            .data(data, function (d) {
+                return d.id;
+            });
 
         words.enter().append('tspan')
-                     .text(String)
-                     .attr('x', width(Math.random()))
-                     .attr('y', height(Math.random()))
-                     .style('fill', color(Math.random()))   //#0000A0
-                     .style('fill-opacity', 0);
+            .text(String)
+            .attr('x', width(Math.random()))
+            .attr('y', height(Math.random()))
+            .style('fill', color(Math.random()))   //#0000A0
+            .style('fill-opacity', 0);
 
         var pos = getWordPositions(words);
-        
-        
+
+
         words.transition()
-             .attr('x', function (d, i) { return pos[i].x; })
-             .attr('y', function (d, i) { return pos[i].y; })
-             .style('fill-opacity', 1);
-             
+            .attr('x', function (d, i) {
+                return pos[i].x;
+            })
+            .attr('y', function (d, i) {
+                return pos[i].y;
+            })
+            .style('fill-opacity', 1);
+
     }
 
-    function getWordPositions(words)
-    {
-        var pos = [{ x: 0, y: 0 }];
+    function getWordPositions(words) {
+        var pos = [
+            { x: 0, y: 0 }
+        ];
 
-        words.each(function (d, i)
-        {
+        words.each(function (d, i) {
             var len = this.getComputedTextLength() + SPACE;
 
-            if ((pos[0].x + len) > (window.innerWidth - 200) )
-            {
+            if ((pos[0].x + len) > (window.innerWidth - 200)) {
                 pos[0].x = 0;
                 pos[0].y += FONT_SIZE;
             }
@@ -85,32 +84,6 @@ $(function()
         return pos.reverse();
     }
 
-        //
-        //  ***CURSOR IS AT THE END OF NON POTENTIAL FULLY APPROAVED MESSAGES ON PAGE
-        //  GO THROUGH ALL POTENTIALS IN ARRAY AND ADD TO STORY
-        // ONCE A NEW APPROVED MESSAGE HAS BEEN SELECTED, REMOVE ALL NON APPROVED POTENTIAL MESSAGES WE CONCAT
-        // TO END AND DO FOR NEXT
-        //  
-        // function tempPotentials(potentials) {
-        //
-        //      var cursor = this.getComputedTextLength() + SPACE;
-        //
-        //      for (var i = 0; i < potentials.length; i++) {
-        //         story = story.concat(potentials[i]);
-        //         update(story);
-        //      }
-        //
-        //      if ( WORD IS SELECTED AS SMS NO LONGER POTENTIAL (ENTER ON ROUND ROBIN) ) {
-        //          REMOVE UNTIL BACK AT ORIGINAL CURSOR + NEW APPROVED MESSAGE
-        //          AND DO FOR THE NEXT SET OF POTENTIALS 
-        //
-        //    }
-        //  
-        //
-        //  }
-
-
-    var potentials = [""];
     var story = [""];
     var once = "Once Upon A Time".split(" ").map(Word);
     story = story.concat(once, -1);
@@ -118,20 +91,13 @@ $(function()
 
     var socket = io.connect('/sms');
 
-    socket.on('potential', function (msg){
-        //to do
-        console.log("potential: " + msg.text);
-    });
-
-    socket.on('sms', function (msg)
-    {
+    socket.on('sms', function (msg) {
         //edit so that when we receive an sms to publish, clear the
         //list of potentials
         console.log("sms: " + msg.text);
         var words = msg.text.split(" ").map(Word);
 
-   
-        
+
         var end = story.splice(msg.pos);
         story = story.concat(words, end);
 

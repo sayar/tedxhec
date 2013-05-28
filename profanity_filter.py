@@ -11,6 +11,7 @@ f.check('whore')
 """
 import re
 
+
 class Filter(object):
     """
     Replaces a bad word in a string with something more PG friendly
@@ -23,7 +24,7 @@ class Filter(object):
         self.clean_word = clean_word
         
     def clean(self, string):
-        exp = '(%s)' %'|'.join(self.bad_words)
+        exp = '(%s)' % '|'.join(self.bad_words)
         r = re.compile(exp, re.IGNORECASE)
         return r.sub(self.clean_word, string)
 
